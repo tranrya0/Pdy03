@@ -9,6 +9,9 @@ using System.Web.Mvc;
 using ContosoUniversity.DAL;
 using ContosoUniversity.Models;
 
+// pagination library
+using PagedList;
+
 namespace ContosoUniversity.Controllers
 {
     public class StudentController : Controller
@@ -16,11 +19,27 @@ namespace ContosoUniversity.Controllers
         private SchoolContext db = new SchoolContext();
 
         // GET: Student
-        public ActionResult Index(string sortOrder, string searchString)
+        public ActionResult Index(string sortOrder, string currentFilter, string searchString, int? page)
         {
             // default sort is by name, in descending order if sortOrder is not provided
+            // CurrentSort provides paginated pages with current sort order
+            ViewBag.CurrentSort = sortOrder;
             ViewBag.NameSortParm = String.IsNullOrEmpty(sortOrder) ? "name_desc" : "";
             ViewBag.DateSortParm = sortOrder == "Date" ? "date_desc" : "Date";
+
+            // reset pagination, upon search string change
+            if (searchString != null)
+            {
+                page = 1;
+            }
+            else
+            {
+                searchString = currentFilter;
+            }
+
+            // provides view with current filter string, upon pagination change
+            ViewBag.CurrentFilter = searchString;
+
             // iQueryable variable used to prep database query
             // but not execute it until calling ToList()
             var students = from s in db.Students
@@ -53,7 +72,15 @@ namespace ContosoUniversity.Controllers
                     students = students.OrderBy(s => s.LastName);
                     break;
             }
-            return View(students.ToList());
+
+            // pagination
+            int pageSize = 3;
+
+            // return page if page is non-null or return 1 if page is null
+            int pageNumber = (page ?? 1);
+
+            // converts students to collection of pagination supported collection
+            return View(students.ToPagedList(pageNumber, pageSize));
         }
 
         // GET: Student/Details/5
